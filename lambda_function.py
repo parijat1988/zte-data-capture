@@ -5,7 +5,7 @@ import pandas as pd
 import boto3
 import logging
 
-# import pymysql
+import pymysql
 from sqlalchemy import create_engine
 from botocore.exceptions import ClientError
 
@@ -14,10 +14,10 @@ logger.setLevel(logging.INFO)
 
 
 class GlobalVariables:
-    database_name = os.getenv('database_name')
-    database_username = os.getenv('database_username')
-    database_password = os.getenv('database_password')
-    database_endpoint = os.getenv('database_endpoint')
+    database_name = 'financial'
+    database_username = 'z3_admin'
+    database_password = 'Enstructure123'
+    database_endpoint = 'z3-database.cjc2464qqu0c.us-east-1.rds.amazonaws.com'
     database_port = 3306
     s3_client = boto3.client('s3')
     database_uri = f"mysql+pymysql://{database_username}:{database_password}@{database_endpoint}:{database_port}/{database_name}"
@@ -38,7 +38,6 @@ def load_df_from_s3(bucket_name, key):
         print("Read from excel dataframe")
     except ClientError as e:
         logger.error(f"S3 object cannot be retrieved: {e}")
-
     return df
 
 
@@ -65,6 +64,58 @@ def data_cleaner(df):
     return df
 
 
+def upload_dataframe_into_rds(df):
+    """
+    Connect to RDS, upload the dataframe into the database
+    """
+    table_name = 'financial_data'
+    database_uri = GlobalVariables.database_uri
+    sql_query = f"SELECT * FROM {table_name}"
+    logger.info("Starting the RDS Connection process...")
+    try:
+        engine = create_engine(database_uri)
+        logger.info('RDS Database connection successful')
+    except Exception as e:
+        logger.error(f'RDS Database connection unsuccessful: {e}')
+        raise
+
+    logger.info("Starting to upload the dataframe into RDS database")
+    try:
+        df.to_sql(table_name, con=engine, if_exists='append', index=False)
+        logger.info(f'Dataframe uploaded into {GlobalVariables.database_name}.{table_name} successfully')
+
+        uploaded_df = pd.read_sql(sql_query, engine)
+        logger.info('\n' + uploaded_df.head(5).to_string(index=False))
+    except Exception as e:
+        logger.error(f'Error happened while uploading dataframe into database: {e}')
+        raise
+
+
+def upload_dataframe_into_rds1():
+    """
+    Connect to RDS, upload the dataframe into the database
+    """
+    table_name = 'financial_data'
+    database_uri = GlobalVariables.database_uri
+    sql_query = f"SELECT * FROM {table_name}"
+    logger.info("Starting the RDS Connection process...")
+    try:
+        engine = create_engine(database_uri)
+        logger.info('RDS Database connection successful')
+    except Exception as e:
+        logger.error(f'RDS Database connection unsuccessful: {e}')
+        raise
+
+    logger.info("Starting to upload the dataframe into RDS database")
+    try:
+
+        uploaded_df = pd.read_sql(sql_query, engine)
+        logger.info('\n' + uploaded_df.head(5).to_string(index=False))
+    except Exception as e:
+        logger.error(f'Error happened while uploading dataframe into database: {e}')
+        raise
+
+
 def lambda_handler(event, context):
     bucket = event['Records'][0]['s3']['bucket']['name']
     key = event['Records'][0]['s3']['object']['key']
@@ -75,4 +126,6 @@ def lambda_handler(event, context):
     df = load_df_from_s3(bucket_name=bucket, key=key)
     df_final = data_cleaner(df)
     print(df_final)
-    # upload_dataframe_into_rds(df_final)
+    upload_dataframe_into_rds(df_final)
+    # upload_dataframe_into_rds1()
+    print("Data uploaded succesfully")

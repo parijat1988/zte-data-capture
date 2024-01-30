@@ -12,10 +12,10 @@ if __name__ == '__main__':
     rows_df =[]
     pd.set_option('display.max_columns', None)
     df = pd.read_excel('Sample.xlsx', header=None )
-    print(df.head(20))
+    #print(df.head(20))
     cleansed_df = df.iloc[4:, 2:-1].reset_index(drop=True)
-    print("--------print(cleansed_df--------")
-    print(cleansed_df.head(20))
+    # print("--------print(cleansed_df--------")
+    # print(cleansed_df.head(20))
     sql_insert_statements = []
     for column, value in cleansed_df.items():
         values = []
@@ -28,6 +28,7 @@ if __name__ == '__main__':
     #print(rows_df)
     df = pd.DataFrame(rows_df, columns=columns)
     print(df)
+    print(df.shape)
 
 
 
